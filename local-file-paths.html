@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>What’s Your Humor DNA?</title>
+<style>
+  :root {
+    --bg: #0f0f10;
+    --panel: #151517;
+    --ink: #f5f5f5;
+    --muted: #bdbdbd;
+    --line: #2b2b2e;
+    --accent: #e91e63;
+    --gold: #ffb300;
+    --frame1: #1b1c20;
+    --frame2: #262730;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+  }
+  .quiz-container {
+    max-width: 960px;
+    margin: 2rem auto;
+    padding: 1rem 1.25rem 3rem;
+  }
+  header h1 {
+    margin: 0 0 .25rem;
+    text-align: center;
+    font-weight: 800;
+    letter-spacing: .2px;
+  }
+  header p.sub {
+    margin: 0 0 1.25rem;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  /* Progress */
+  .progress-wrap {
+    display: flex; align-items: center; gap: .75rem;
+    margin: 0 auto 1rem; max-width: 820px;
+  }
+  .progress-text { color: var(--muted); min-width: 110px; font-variant-numeric: tabular-nums; }
+  .progress-bar {
+    flex: 1; height: 10px; background: #1b1b1e; border: 1px solid var(--line);
+    border-radius: 999px; overflow: hidden; position: relative;
+  }
+  .progress-bar > span {
+    position:absolute; inset:0 0 0 auto; width:0%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    transition: width .35s ease;
+  }
+
+  /* Question + options */
+  h2.q {
+    text-align: center;
+    margin: 1rem 0 .8rem;
+    font-size: 1.35rem;
+  }
+  .options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 0 auto;
+    max-width: 960px;
+  }
+  .option {
+    position: relative; border-radius: 14px; overflow: hidden; cursor: pointer;
+    border: 1px solid var(--line); background: #0c0c0e; isolation: isolate;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  }
+  .option:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px rgba(0,0,0,.35);
+    border-color: #3a3a3f;
+  }
+  .option img {
+    display:block; width:100%; height: 205px; object-fit: cover;
+    filter: saturate(1.05);
+  }
+  .label {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: .6rem .75rem;
+    background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0));
+    font-weight: 700; text-align: center;
+  }
+  .hidden { display:none !important; }
+
+  /* Buttons */
+  .controls {
+    display:flex; gap:.75rem; justify-content:center; align-items:center; margin-top: 1.25rem;
+  }
+  button {
+    appearance: none; border:1px solid transparent;
+    background: var(--accent); color:white; font-weight:700;
+    padding: .9rem 1.25rem; border-radius: 10px; cursor: pointer;
+    transition: filter .2s ease, transform .05s ease;
+  }
+  button.secondary {
+    background: #1f1f22; color: var(--ink); border-color: var(--line);
+  }
+  button:active { transform: translateY(1px); }
+  button:disabled { opacity:.6; cursor:not-allowed; }
+
+  /* Results (top panels + spectrum) */
+  .results-wrap { max-width: 960px; margin: 1.25rem auto 0; }
+  .top-card {
+    background: var(--panel); border:1px solid var(--line);
+    border-radius: 14px; padding: 1.25rem;
+    box-shadow: 0 6px 24px rgba(0,0,0,.25); margin-bottom: 1rem;
+  }
+  .top-card h3 { margin:.2rem 0 .4rem; font-size:1.35rem; }
+  .tagline { color: var(--muted); margin: .1rem 0 .6rem; font-style: italic; }
+  .meta {
+    display:flex; gap:.6rem; flex-wrap: wrap; margin:.5rem 0 .2rem;
+  }
+  .meta div {
+    background:#101013; border:1px solid var(--line); border-radius: 999px;
+    padding: .45rem .65rem; color:#dedede; font-size:.95rem;
+  }
+  .subtle { color: var(--muted); margin-top:.4rem; }
+
+  .ranklist { display:grid; gap:.55rem; margin-top: 1rem; }
+  .rankrow {
+    display:grid; grid-template-columns: 260px 1fr 60px; gap:.6rem; align-items:center;
+  }
+  @media (max-width: 640px) {
+    .rankrow { grid-template-columns: 180px 1fr 50px; }
+  }
+  .rankrow .name { color:#e7e7e7; }
+  .bar {
+    height: 12px; background:#1b1b1e; border:1px solid var(--line);
+    border-radius: 999px; overflow: hidden; position: relative;
+  }
+  .bar > span {
+    position:absolute; left:0; top:0; bottom:0; width:0%;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    transition: width .6s ease;
+  }
+  .pct { text-align:right; color:#cfcfcf; font-variant-numeric: tabular-nums; }
+
+  footer.note {
+    color: var(--muted); text-align:center; margin-top: 1.25rem;
+  }
+
+  /* ================= Framed Profile Card (own layout) ================= */
+  .profile-frame {
+    margin-top: 1.25rem;
+    padding: 14px;
+    border-radius: 18px;
+    background:
+      radial-gradient(1200px 400px at 10% -20%, rgba(233,30,99,.15), transparent 55%),
+      radial-gradient(1200px 400px at 90% 120%, rgba(255,179,0,.12), transparent 55%),
+      linear-gradient(135deg, var(--frame1), var(--frame2));
+    border: 1px solid #333542;
+    box-shadow:
+      0 12px 40px rgba(0,0,0,.45),
+      inset 0 0 0 1px rgba(255,255,255,.02);
+  }
+  .profile-card {
+    background: #121318;
+    border: 1px solid #2f3140;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .profile-hero {
+    height: 140px; width: 100%;
+    background:
+      linear-gradient(120deg, rgba(233,30,99,.28), rgba(255,179,0,.22)),
+      url('https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/profile-cover.jpg') center/cover no-repeat;
+    border-bottom: 1px solid #2f3140;
+  }
+  .profile-body { padding: 1rem 1rem 1.1rem; }
+  .profile-header {
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap;
+    margin-top:-28px;
+  }
+  .profile-title {
+    background: rgba(0,0,0,.5);
+    padding:.6rem .8rem; border-radius: 10px; backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .profile-title h2 { margin:.1rem 0; font-size:1.25rem; letter-spacing:.2px; }
+  .badges { display:flex; gap:.5rem; flex-wrap:wrap; }
+  .badge {
+    background:#101013; border:1px solid #37384a; color:#e9e9e9;
+    padding:.35rem .6rem; border-radius:999px; font-size:.9rem;
+  }
+  .card-tagline { color:#cfd0db; margin:.5rem 0 .75rem; font-style:italic; }
+
+  .grid-2 {
+    display:grid; grid-template-columns: 1fr; gap:.75rem;
+  }
+  @media (min-width: 820px) {
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+  }
+  .section {
+    background:#161721; border:1px solid #2f3140; border-radius:12px;
+    padding:.85rem .95rem;
+  }
+  .section h4 { margin:.1rem 0 .45rem; font-size:1rem; color:#f0f0f6; }
+  .section p { margin:.15rem 0; color:#ddddf0; line-height:1.5; }
+
+  .kv {
+    display:grid; grid-template-columns: 120px 1fr; gap:.4rem .6rem;
+    font-size:.95rem; color:#dcdcea; margin-top:.2rem;
+  }
+  .kv div b { color:#f3f3ff; }
+
+  .actions { display:flex; gap:.6rem; margin-top:.9rem; flex-wrap:wrap; }
+  .actions button.small {
+    padding:.55rem .75rem; font-size:.9rem; border-radius:9px;
+  }
+</style>
+</head>
+<body>
+  <div class="quiz-container">
+    <header>
+      <h1>What’s Your Humor DNA?</h1>
+      <p class="sub">A 20-question visual quiz that maps your humor spectrum.</p>
+    </header>
+
+    <div class="progress-wrap">
+      <div class="progress-text" id="progressText">Question 1 / 20</div>
+      <div class="progress-bar"><span id="progressFill" style="width:0%"></span></div>
+    </div>
+
+    <div id="quiz"></div>
+
+    <div class="controls" id="controls">
+      <button id="skipBtn" class="secondary" title="Skip this question">Skip</button>
+      <button id="retakeBtn" class="secondary hidden">Retake Quiz</button>
+    </div>
+
+    <div id="result" class="hidden"></div>
+
+    <footer class="note">
+      Tip: click any image to answer — your next question loads automatically.
+    </footer>
+  </div>
+
+<script>
+/* ------------------------- Profiles / Explanations ------------------------- */
+const HUMOR_PROFILES = {
+  DH: {
+    title: "Dark Humor",
+    tagline: "You laugh where angels fear to tread.",
+    desc: "You’re unfazed by taboo topics, and you enjoy jokes that dance on the edge. Timing and moral contrast make it land—shock is the spice, not the meal.",
+    people: ["Anthony Jeselnik", "Nikki Glaser", "Jordan Peele"],
+    pop: ["The Lobster", "Barry", "South Park", "In Bruges"]
+  },
+  SH: {
+    title: "Sarcastic / Dry",
+    tagline: "Deadpan delivery. Maximum sting.",
+    desc: "You favor razor-edged wit and bone-dry understatement. The joke is in the attitude—and the perfectly placed eye roll.",
+    people: ["Aubrey Plaza", "Stephen Colbert", "Ricky Gervais"],
+    pop: ["Veep", "The Office", "Daria", "What We Do in the Shadows"]
+  },
+  WH: {
+    title: "Whimsical / Absurd",
+    tagline: "Logic optional. Delight mandatory.",
+    desc: "Word-tilting silliness and earnest oddity make you cackle. You love left-turn premises and clever, innocent ridiculousness.",
+    people: ["Taika Waititi", "Bo Burnham", "John Cleese"],
+    pop: ["Monty Python", "Grand Budapest Hotel", "Napoleon Dynamite", "SpongeBob"]
+  },
+  PH: {
+    title: "Physical / Slapstick",
+    tagline: "Comedy is a contact sport.",
+    desc: "You laugh loudest at kinetic chaos—falls, flubs, and visual gags. Timing, faces, and bodies doing very silly things.",
+    people: ["Jim Carrey", "Melissa McCarthy", "Rowan Atkinson"],
+    pop: ["Ted", "The Nice Guys", "Mr. Bean", "Hot Fuzz"]
+  },
+  WP: {
+    title: "Wordplay / Clever",
+    tagline: "Pun with intent.",
+    desc: "Language gymnastics, layered callbacks, and precision phrasing. You love jokes you can replay in your head and still find new gears.",
+    people: ["John Mulaney", "Tina Fey", "Demetri Martin"],
+    pop: ["Arrested Development (early)", "The Good Place", "Taskmaster"]
+  },
+  SA: {
+    title: "Satirical / Political",
+    tagline: "Punching up is an art form.",
+    desc: "You like your laughs with teeth. You enjoy comedy that exposes hypocrisy, power games, and social absurdities.",
+    people: ["George Carlin", "Samantha Bee", "Hasan Minhaj"],
+    pop: ["Veep", "Dr. Strangelove", "Don’t Look Up", "South Park"]
+  },
+  SD: {
+    title: "Self-Deprecating",
+    tagline: "First target: me.",
+    desc: "Disarming honesty and playful vulnerability are your sweet spot. The joke’s on you—but never mean-spirited.",
+    people: ["Ali Wong", "John Mulaney", "Taylor Tomlinson"],
+    pop: ["The Office (Michael)", "Fleabag", "Pen15"]
+  },
+  SU: {
+    title: "Surreal / Nonsense",
+    tagline: "You vibe with the dream logic.",
+    desc: "You enjoy humor that feels like a fever dream: odd juxtapositions, non sequiturs, and impossible rules played straight.",
+    people: ["Eric Andre", "Tim & Eric", "Noel Fielding"],
+    pop: ["I Think You Should Leave", "Monty Python", "SpongeBob (deep cuts)"]
+  }
+};
+
+/* ------------------------------ Full Quiz Data ----------------------------- */
+const quizData = [
+  {
+    q: "Which of these TV shows makes you laugh the most?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/the-office.png", label: "The Office", types: ["SH","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/southpark.png", label: "South Park", types: ["DH","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/veep.png", label: "Veep", types: ["SH","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/spongebob.png", label: "SpongeBob SquarePants", types: ["WH","SU"] }
+    ]
+  },
+  {
+    q: "Pick the comedian you’d rather see live.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/bo-burnham.png", label: "Bo Burnham", types: ["WH","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/tina-fey.png", label: "Tina Fey", types: ["WP","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/chappelle.png", label: "Dave Chappelle", types: ["DH","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/jim-carrey.png", label: "Jim Carrey", types: ["PH","SU"] }
+    ]
+  },
+  {
+    q: "Choose your favorite one-liner.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I'm not superstitious, but I am a little stitious.", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I told my wife she should embrace her mistakes — she hugged me.", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Life is a soup and I'm a fork.", types: ["WH","SU"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I'm not lazy, I'm on energy-saving mode.", types: ["WP","SD"] }
+    ]
+  },
+  {
+    q: "Which meme makes you laugh more?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/distracted-boyfriend.png", label: "Distracted Boyfriend", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/doge.png", label: "Doge", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/fine.png", label: "This is fine.", types: ["DH","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/leonardo-cheers.png", label: "Leonardo Cheers", types: ["WP","SH"] }
+    ]
+  },
+  {
+    q: "Pick the movie you’d most likely quote.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/the-menu.png", label: "The Menu", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/grand-budapest-hotel.png", label: "The Grand Budapest Hotel", types: ["WH","SU"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/ted.png", label: "Ted", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/lobster.png", label: "The Lobster", types: ["SA","DH"] }
+    ]
+  },
+  {
+    q: "Your ideal comedy night includes:",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Stand-up", types: ["SH","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Improv", types: ["PH","WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Satire Show", types: ["SA","DH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Sketch Comedy", types: ["WP","SU"] }
+    ]
+  },
+  {
+    q: "Which situation would make you laugh the hardest?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "A friend falls off a chair", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "A ridiculous misunderstanding", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "A sarcastic burn", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "A wild coincidence", types: ["WP"] }
+    ]
+  },
+  {
+    q: "Pick a funny animal video.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/silly-cat.gif", label: "Cat knocking things off a counter", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/dog-costume.png", label: "Dog wearing sunglasses", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/monkey.gif", label: "Monkey pranking tourists", types: ["PH","SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/laughing-goat.gif", label: "Goat yelling", types: ["SU"] }
+    ]
+  },
+  {
+    q: "Choose your favorite comedy era.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Classic slapstick (Charlie Chaplin)", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "90s sitcoms", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Modern stand-up (Netflix era)", types: ["SA","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Internet memes", types: ["WH","SU"] }
+    ]
+  },
+  {
+    q: "Which quote describes your sense of humor best?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "If you can't laugh at yourself, I'll do it for you.", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I find joy in the absurd.", types: ["WH","SU"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Sarcasm is my love language.", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Dark humor is like food — not everyone gets it.", types: ["DH"] }
+    ]
+  },
+  {
+    q: "Which comedian’s special would you rewatch?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/carlin.png", label: "George Carlin", types: ["SA","DH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/ali-wong.png", label: "Ali Wong", types: ["SD","SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/eddie-izzard.png", label: "Eddie Izzard", types: ["SH","SA"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gaffigan.png", label: "Jim Gaffigan", types: ["WP","SD"] }
+    ]
+  },
+  {
+    q: "Pick a GIF that matches your laugh style.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/facepalm.gif", label: "Facepalm", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/goodfellas-laughing.gif", label: "Uncontrollable laughter", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/judge-judy-eyeroll.gif", label: "Eye roll", types: ["SH","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/smirk.gif", label: "Subtle smirk", types: ["SD"] }
+    ]
+  },
+  {
+    q: "Which fictional character cracks you up the most?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/michael-scott.png", label: "Michael Scott (The Office)", types: ["SD","SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/daria.png", label: "Daria Morgendorffer (Daria)", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/deadpool.png", label: "Deadpool", types: ["DH","WP"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/selina.png", label: "Selina Meyer (Veep)", types: ["SH","SA"] }
+    ]
+  },
+  {
+    q: "Pick a kind of joke.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Pun", types: ["WP"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Sarcastic remark", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Absurd scenario", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Political roast", types: ["SA"] }
+    ]
+  },
+  {
+    q: "How do you react when someone falls in public?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Laugh immediately", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Wait to see if they’re okay first", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Pretend not to laugh", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Make a joke to ease the tension", types: ["WP"] }
+    ]
+  },
+  {
+    q: "Your favorite internet humor type:",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Dark memes", types: ["DH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Wholesome memes", types: ["SD","WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Weirdcore memes", types: ["SU","WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Sarcastic tweets", types: ["SH"] }
+    ]
+  },
+  {
+    q: "If you wrote a joke book, it would be titled:",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Oops, Too Soon?", types: ["DH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Laughing at Myself", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "The Pun Stops Here", types: ["WP"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I Can’t Believe That’s Funny", types: ["WH"] }
+    ]
+  },
+  {
+    q: "What’s your reaction to dad jokes?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I love them", types: ["WP"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I groan but secretly laugh", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I roll my eyes", types: ["SH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "I wish I’d thought of that", types: ["WP"] }
+    ]
+  },
+  {
+    q: "Pick a comedy movie moment.",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/ted-tammy.gif", label: "Ted Meets Tammy-Lynne", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/grand-budapest.gif", label: "Zero & M. Gustave Deliver Pastries", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/bathroom-stall.gif", label: "Bathroom Stall Scene (The Nice Guys)", types: ["PH","SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/kicks-kids.gif", label: "Mildred Kicks High School Kids", types: ["SH"] }
+    ]
+  },
+  {
+    q: "Which word makes you laugh more?",
+    options: [
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Moist", types: ["SD"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Flap", types: ["WH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Boing", types: ["PH"] },
+      { img: "https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/gradient-bg.png", label: "Pickle", types: ["SU"] }
+    ]
+  }
+];
+
+/* ------------------------------- App State -------------------------------- */
+const quizEl = document.getElementById("quiz");
+const resultEl = document.getElementById("result");
+const skipBtn = document.getElementById("skipBtn");
+const retakeBtn = document.getElementById("retakeBtn");
+const progressText = document.getElementById("progressText");
+const progressFill = document.getElementById("progressFill");
+
+let current = 0;
+let scores = {DH:0,SH:0,WH:0,PH:0,WP:0,SA:0,SD:0,SU:0};
+const TOTAL_Q = quizData.length;
+
+/* ------------------------------ Render Logic ------------------------------ */
+function updateProgress() {
+  const shown = Math.min(current + 1, TOTAL_Q);
+  progressText.textContent = current < TOTAL_Q
+    ? `Question ${shown} / ${TOTAL_Q}`
+    : `Finished — ${TOTAL_Q} / ${TOTAL_Q}`;
+  const pct = Math.round((Math.min(current, TOTAL_Q) / TOTAL_Q) * 100);
+  progressFill.style.width = pct + "%";
+}
+
+function renderQuestion() {
+  if (current >= TOTAL_Q) return showResult();
+
+  resultEl.classList.add("hidden");
+  retakeBtn.classList.add("hidden");
+
+  quizEl.innerHTML = "";
+  const qData = quizData[current];
+
+  const h2 = document.createElement("h2");
+  h2.className = "q";
+  h2.textContent = qData.q;
+  quizEl.appendChild(h2);
+
+  const grid = document.createElement("div");
+  grid.className = "options";
+
+  qData.options.forEach(opt => {
+    const card = document.createElement("div");
+    card.className = "option";
+    card.setAttribute("role","button");
+    card.setAttribute("tabindex","0");
+    card.innerHTML =
+      `<img src="${opt.img}" alt="${opt.label}">
+       <div class="label">${opt.label}</div>`;
+    const handle = () => selectAnswer(opt);
+    card.addEventListener("click", handle);
+    card.addEventListener("keypress", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); handle(); }});
+    grid.appendChild(card);
+  });
+
+  quizEl.appendChild(grid);
+  updateProgress();
+}
+
+function selectAnswer(opt) {
+  opt.types.forEach(t => { if (scores[t] != null) scores[t] += 1; });
+  current += 1;
+  renderQuestion();
+}
+
+/* -------------------- Profile Card helpers (self-contained) ---------------- */
+function buildShareText(userName, topCode, secondCode, sorted, total) {
+  const top = HUMOR_PROFILES[topCode];
+  const runner = secondCode ? HUMOR_PROFILES[secondCode] : null;
+  const pct = (c)=> Math.round((c/total)*100);
+
+  const lines = [];
+  lines.push(`${userName ? userName + "’s" : "My"} Humor DNA`);
+  lines.push(`Top: ${top.title} — “${top.tagline}”`);
+  if (runner) lines.push(`Runner-up: ${runner.title}`);
+  lines.push(`Spectrum: ` + sorted.map(([k,v])=> `${HUMOR_PROFILES[k].title.split(" / ")[0]} ${pct(v)}%`).join(" · "));
+  return lines.join("\n");
+}
+
+function createHumorProfileCard(opts) {
+  const {
+    userName = "Your",
+    topCode, secondCode, sorted, total,
+    curated
+  } = opts;
+
+  const top = HUMOR_PROFILES[topCode];
+  const sec = secondCode ? HUMOR_PROFILES[secondCode] : null;
+
+  const curatedExamples = curated || {
+    primary: ["The Menu","The Lobster","Veep","White Lotus"],
+    secondary: ["Grand Budapest Hotel","Jojo Rabbit","Hacks","Shrinking"],
+    tertiary: ["Ted","Game Night","Silicon Valley"]
+  };
+
+  // Frame (inline styles so it works without extra CSS)
+  const frame = document.createElement("div");
+  frame.style.marginTop = "1.1rem";
+  frame.style.padding = "14px";
+  frame.style.borderRadius = "18px";
+  frame.style.background = "radial-gradient(1200px 400px at 10% -20%, rgba(233,30,99,.15), transparent 55%), radial-gradient(1200px 400px at 90% 120%, rgba(255,179,0,.12), transparent 55%), linear-gradient(135deg, #1b1c20, #262730)";
+  frame.style.border = "1px solid #333542";
+  frame.style.boxShadow = "0 12px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.02)";
+
+  const wrap = document.createElement("div");
+  wrap.style.background = "#121318";
+  wrap.style.border = "1px solid #2f3140";
+  wrap.style.borderRadius = "14px";
+  wrap.style.overflow = "hidden";
+  wrap.style.color = "#f5f5f5";
+  wrap.style.fontFamily = "system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, sans-serif";
+
+  const hero = document.createElement("div");
+  hero.style.height = "140px";
+  hero.style.width = "100%";
+  hero.style.background = "linear-gradient(120deg, rgba(233,30,99,.28), rgba(255,179,0,.22)), url('https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/profile-cover.jpg') center/cover no-repeat";
+  hero.style.borderBottom = "1px solid #2f3140";
+  wrap.appendChild(hero);
+
+  const body = document.createElement("div");
+  body.style.padding = "1rem 1rem 1.1rem";
+
+  const header = document.createElement("div");
+  header.style.display = "flex";
+  header.style.alignItems = "center";
+  header.style.justifyContent = "space-between";
+  header.style.gap = ".75rem";
+  header.style.flexWrap = "wrap";
+  header.style.marginTop = "-28px";
+
+  const titleBox = document.createElement("div");
+  titleBox.style.background = "rgba(0,0,0,.5)";
+  titleBox.style.padding = ".6rem .8rem";
+  titleBox.style.borderRadius = "10px";
+  titleBox.style.backdropFilter = "blur(4px)";
+  titleBox.style.border = "1px solid rgba(255,255,255,.06)";
+  const h2 = document.createElement("h2");
+  h2.textContent = `${userName} Humor DNA`;
+  h2.style.margin = ".1rem 0";
+  h2.style.fontSize = "1.25rem";
+  h2.style.letterSpacing = ".2px";
+  titleBox.appendChild(h2);
+
+  const badges = document.createElement("div");
+  badges.style.display = "flex";
+  badges.style.gap = ".5rem";
+  badges.style.flexWrap = "wrap";
+  const b1 = document.createElement("span");
+  b1.textContent = top.title;
+  [b1].forEach(b=>{
+    b.style.background = "#101013";
+    b.style.border = "1px solid #37384a";
+    b.style.color = "#e9e9e9";
+    b.style.padding = ".35rem .6rem";
+    b.style.borderRadius = "999px";
+    b.style.fontSize = ".9rem";
+  });
+  badges.appendChild(b1);
+  if (sec) {
+    const b2 = document.createElement("span");
+    b2.textContent = `Runner-up: ${sec.title}`;
+    b2.style.background = "#101013";
+    b2.style.border = "1px solid #37384a";
+    b2.style.color = "#e9e9e9";
+    b2.style.padding = ".35rem .6rem";
+    b2.style.borderRadius = "999px";
+    b2.style.fontSize = ".9rem";
+    badges.appendChild(b2);
+  }
+
+  header.appendChild(titleBox);
+  header.appendChild(badges);
+  body.appendChild(header);
+
+  const tagline = document.createElement("div");
+  tagline.textContent = `“${top.tagline}”`;
+  tagline.style.color = "#cfd0db";
+  tagline.style.margin = ".5rem 0 .75rem";
+  tagline.style.fontStyle = "italic";
+  body.appendChild(tagline);
+
+  // 2-column grid sections
+  const grid = document.createElement("div");
+  grid.style.display = "grid";
+  grid.style.gridTemplateColumns = "1fr";
+  grid.style.gap = ".75rem";
+  if (window.innerWidth >= 820) grid.style.gridTemplateColumns = "1fr 1fr";
+
+  const sec1 = document.createElement("div");
+  sec1.style.background = "#161721";
+  sec1.style.border = "1px solid #2f3140";
+  sec1.style.borderRadius = "12px";
+  sec1.style.padding = ".85rem .95rem";
+  const h4a = document.createElement("h4");
+  h4a.textContent = "Core Read";
+  h4a.style.margin = ".1rem 0 .45rem";
+  h4a.style.fontSize = "1rem";
+  h4a.style.color = "#f0f0f6";
+  const p1 = document.createElement("p");
+  p1.textContent = top.desc;
+  p1.style.margin = ".15rem 0";
+  p1.style.color = "#ddddf0";
+  p1.style.lineHeight = "1.5";
+  sec1.appendChild(h4a);
+  sec1.appendChild(p1);
+  if (sec) {
+    const p2 = document.createElement("p");
+    p2.innerHTML = `You also score highly on <b>${sec.title}</b>, which blends into your primary style when the jokes punch up.`;
+    p2.style.marginTop = ".35rem";
+    p2.style.color = "#ddddf0";
+    sec1.appendChild(p2);
+  }
+
+  const sec2 = document.createElement("div");
+  sec2.style.background = "#161721";
+  sec2.style.border = "1px solid #2f3140";
+  sec2.style.borderRadius = "12px";
+  sec2.style.padding = ".85rem .95rem";
+  const h4b = document.createElement("h4");
+  h4b.textContent = "Pop-Culture Compass";
+  h4b.style.margin = ".1rem 0 .45rem";
+  h4b.style.fontSize = "1rem";
+  h4b.style.color = "#f0f0f6";
+
+  const kv = document.createElement("div");
+  kv.style.display = "grid";
+  kv.style.gridTemplateColumns = "120px 1fr";
+  kv.style.gap = ".4rem .6rem";
+  kv.style.fontSize = ".95rem";
+  kv.style.color = "#dcdcea";
+  kv.style.marginTop = ".2rem";
+  function addKV(label, val) {
+    const k = document.createElement("div"); k.innerHTML = `<b style="color:#f3f3ff">${label}</b>`;
+    const v = document.createElement("div"); v.textContent = val.join(" • ");
+    kv.appendChild(k); kv.appendChild(v);
+  }
+  addKV("Primary", curatedExamples.primary);
+  addKV("Secondary", curatedExamples.secondary);
+  addKV("Tertiary", curatedExamples.tertiary);
+
+  sec2.appendChild(h4b);
+  sec2.appendChild(kv);
+
+  grid.appendChild(sec1);
+  grid.appendChild(sec2);
+  body.appendChild(grid);
+
+  // Spectrum inside card
+  const sec3 = document.createElement("div");
+  sec3.style.background = "#161721";
+  sec3.style.border = "1px solid #2f3140";
+  sec3.style.borderRadius = "12px";
+  sec3.style.padding = ".85rem .95rem";
+  sec3.style.marginTop = ".75rem";
+  const h4c = document.createElement("h4");
+  h4c.textContent = "Your Humor Spectrum";
+  h4c.style.margin = ".1rem 0 .45rem";
+  h4c.style.fontSize = "1rem";
+  h4c.style.color = "#f0f0f6";
+  const list = document.createElement("div");
+  list.style.display = "grid";
+  list.style.gap = ".55rem";
+  sorted.forEach(([code, val])=>{
+    const row = document.createElement("div");
+    row.style.display = "grid";
+    row.style.gridTemplateColumns = "220px 1fr 60px";
+    row.style.gap = ".6rem";
+    row.style.alignItems = "center";
+    const name = document.createElement("div");
+    name.textContent = HUMOR_PROFILES[code].title;
+    name.style.color = "#e7e7e7";
+    const bar = document.createElement("div");
+    bar.style.height = "12px";
+    bar.style.background = "#1b1b1e";
+    bar.style.border = "1px solid #2b2b2e";
+    bar.style.borderRadius = "999px";
+    bar.style.overflow = "hidden";
+    bar.style.position = "relative";
+    const fill = document.createElement("span");
+    fill.style.position = "absolute";
+    fill.style.left = "0"; fill.style.top = "0"; fill.style.bottom = "0";
+    const pct = Math.round((val/total)*100);
+    fill.style.width = pct + "%";
+    fill.style.background = "linear-gradient(90deg, #e91e63, #ffb300)";
+    fill.style.transition = "width .6s ease";
+    bar.appendChild(fill);
+    const pctEl = document.createElement("div");
+    pctEl.textContent = pct + "%";
+    pctEl.style.textAlign = "right";
+    pctEl.style.color = "#cfcfcf";
+    pctEl.style.fontVariantNumeric = "tabular-nums";
+    row.appendChild(name); row.appendChild(bar); row.appendChild(pctEl);
+    list.appendChild(row);
+  });
+  sec3.appendChild(h4c);
+  sec3.appendChild(list);
+  body.appendChild(sec3);
+
+  const actions = document.createElement("div");
+  actions.style.display = "flex";
+  actions.style.gap = ".6rem";
+  actions.style.marginTop = ".9rem";
+  actions.style.flexWrap = "wrap";
+  const copyBtn = document.createElement("button");
+  copyBtn.textContent = "Copy summary";
+  copyBtn.style.padding = ".55rem .75rem";
+  copyBtn.style.fontSize = ".9rem";
+  copyBtn.style.borderRadius = "9px";
+  copyBtn.style.border = "1px solid #444";
+  copyBtn.style.background = "#e91e63";
+  copyBtn.style.color = "#fff";
+  const topBtn = document.createElement("button");
+  topBtn.textContent = "Scroll to top";
+  topBtn.style.padding = ".55rem .75rem";
+  topBtn.style.fontSize = ".9rem";
+  topBtn.style.borderRadius = "9px";
+  topBtn.style.border = "1px solid #2b2b2e";
+  topBtn.style.background = "#1f1f22";
+  topBtn.style.color = "#f5f5f5";
+  actions.appendChild(copyBtn);
+  actions.appendChild(topBtn);
+  body.appendChild(actions);
+
+  copyBtn.onclick = async () => {
+    try {
+      const txt = buildShareText(userName.replace(/’s$/,''), topCode, secondCode, sorted, total);
+      await navigator.clipboard.writeText(txt);
+      copyBtn.textContent = "Copied ✓";
+      setTimeout(()=> copyBtn.textContent = "Copy summary", 1200);
+    } catch(e) {
+      copyBtn.textContent = "Copy failed";
+      setTimeout(()=> copyBtn.textContent = "Copy summary", 1200);
+    }
+  };
+  topBtn.onclick = () => window.scrollTo({top:0, behavior:"smooth"});
+
+  wrap.appendChild(body);
+  frame.appendChild(wrap);
+  return frame;
+}
+
+/* -------------------------------- Results --------------------------------- */
+function showResult(){
+  quizEl.innerHTML = "";
+  resultEl.classList.remove("hidden");
+
+  // compute totals
+  const entries = Object.entries(scores);
+  const total = entries.reduce((s,[,v]) => s+v, 0) || 1;
+  const sorted = entries.sort((a,b)=>b[1]-a[1]);
+  const [topCode, topScore] = sorted[0];
+  const second = sorted[1] || [null,0];
+
+  const wrap = document.createElement("div");
+  wrap.className = "results-wrap";
+
+  const prof = HUMOR_PROFILES[topCode];
+  const pctTop = Math.round((topScore/total)*100);
+
+  // top card
+  const top = document.createElement("div");
+  top.className = "top-card";
+  top.innerHTML = `
+    <div class="tagline">Your dominant humor type</div>
+    <h3>${prof.title}</h3>
+    <div class="tagline">“${prof.tagline}”</div>
+    <p>${prof.desc}</p>
+    <div class="meta">
+      <div><strong>People:</strong> ${prof.people.join(", ")}</div>
+      <div><strong>Pop culture:</strong> ${prof.pop.join(", ")}</div>
+    </div>
+    <div class="subtle">Top score: ${pctTop}% (${topScore} of ${total} points)</div>
+  `;
+  wrap.appendChild(top);
+
+  // runner-up if close (within 8% or ≤2 pts)
+  if (second[1] > 0) {
+    const diff = topScore - second[1];
+    const close = diff <= Math.max(2, Math.ceil(0.08 * total));
+    if (close) {
+      const r = HUMOR_PROFILES[second[0]];
+      const pct2 = Math.round((second[1]/total)*100);
+      const runner = document.createElement("div");
+      runner.className = "top-card";
+      runner.innerHTML = `
+        <div class="tagline">Runner-up (strong secondary)</div>
+        <h3>${r.title}</h3>
+        <div class="tagline">“${r.tagline}”</div>
+        <p>${r.desc}</p>
+        <div class="subtle">Score: ${pct2}% (${second[1]} of ${total})</div>
+      `;
+      wrap.appendChild(runner);
+    }
+  }
+
+  // full ranking
+  const header = document.createElement("h3");
+  header.textContent = "Your Humor Spectrum";
+  header.style.margin = "1rem 0 .4rem";
+  wrap.appendChild(header);
+
+  const list = document.createElement("div");
+  list.className = "ranklist";
+
+  sorted.forEach(([code, val]) => {
+    const row = document.createElement("div");
+    row.className = "rankrow";
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = HUMOR_PROFILES[code].title;
+
+    const bar = document.createElement("div");
+    bar.className = "bar";
+    const fill = document.createElement("span");
+    const pct = Math.round((val/total)*100);
+    fill.style.width = pct + "%";
+    bar.appendChild(fill);
+
+    const pctEl = document.createElement("div");
+    pctEl.className = "pct";
+    pctEl.textContent = pct + "%";
+
+    row.appendChild(name);
+    row.appendChild(bar);
+    row.appendChild(pctEl);
+    list.appendChild(row);
+  });
+
+  wrap.appendChild(list);
+
+  // Framed profile card with curated references (includes Ted)
+  const card = createHumorProfileCard({
+    userName: "Your",
+    topCode,
+    secondCode: second[0],
+    sorted,
+    total,
+    curated: {
+      primary: ["The Menu","The Lobster","Veep","White Lotus"],
+      secondary: ["Grand Budapest Hotel","Jojo Rabbit","Hacks","Shrinking"],
+      tertiary: ["Ted","Game Night","Silicon Valley"]
+    }
+  });
+  wrap.appendChild(card);
+
+  // retake
+  retakeBtn.classList.remove("hidden");
+  retakeBtn.onclick = () => {
+    current = 0;
+    scores = {DH:0,SH:0,WH:0,PH:0,WP:0,SA:0,SD:0,SU:0};
+    progressFill.style.width = "0%";
+    resultEl.classList.add("hidden");
+    updateProgress();
+    renderQuestion();
+    window.scrollTo({top:0, behavior:"smooth"});
+  };
+
+  resultEl.innerHTML = "";
+  resultEl.appendChild(wrap);
+
+  // progress at 100%
+  updateProgress();
+}
+
+/* ------------------------------- Controls --------------------------------- */
+skipBtn.addEventListener("click", () => {
+  current += 1;
+  renderQuestion();
+});
+
+/* --------------------------------- Init ----------------------------------- */
+renderQuestion();
+</script>
+
+</body>
+</html>
