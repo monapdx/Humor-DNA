@@ -1,7 +1,7 @@
 # 🎭 Humor DNA  
 *A fun quiz to identify your humor style and preferences*  
 
-![Humor DNA Banner](images/humor-dna.png)
+![Humor DNA Banner](https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/banner.png)
 
 <p align="center">
   <a href="https://monapdx.github.io/Humor-DNA/">
