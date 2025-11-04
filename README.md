@@ -19,7 +19,7 @@
 ## Main Screenshot
 ![Screenshot](https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/HumorDNA-screenshot.png)
 
-##Results Screenshot
+## Results Screenshot
 
 ![Screenshot](https://raw.githubusercontent.com/monapdx/Humor-DNA/refs/heads/main/quiz-results-screenshot.png)
 
